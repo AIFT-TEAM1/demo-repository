@@ -60,7 +60,7 @@ class Kiwoom(QAxWidget):
         self.OnReceiveTrData.connect(self.trdata_slot)
     
     def login_slot(self, errCode):
-        print(errors(errCode)) #errCode == 0 올바르게 연결
+        print(errorCode(errCode)) #errCode == 0 올바르게 연결
 
         self.login_event_loop.exit()
     
