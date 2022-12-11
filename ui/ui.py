@@ -4,7 +4,6 @@ from PyQt5.QtWidgets import *
 
 class ui_class():
     def __init__(self):
-        print("ui 실행")
 
         self.app = QApplication(sys.argv)
 
