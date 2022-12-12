@@ -39,7 +39,7 @@ class Kiwoom(QAxWidget):
 
         #####변수 모음######
         self.portfolio_stock_dict = {}
-        self.account_stock_dict = {}
+        self.account_stock_dict = {} #계좌잔고 평가 내역
         self.not_account_stock_dict = {}
         self.jango_dict = {}
         ###################
@@ -131,6 +131,39 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("CommRqData(QString, QString, int, QString)", "실시간미체결요청", "opt10075", sPreNext, self.screen_my_info)
 
         self.detail_account_info_event_loop.exec_()
+
+    def get_code_list_by_market(self, market_code):
+        '''종목 코드들 반환'''
+        code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
+        code_list = code_list.split(";")[:-1]
+
+        return code_list
+    
+    def calculator_fnc(self):
+        code_list = self.get_code_list_by_market("10")
+        print("코스닥 갯수 %s" %len(code_list))
+
+        for idx, code in enumerate(code_list):
+
+            self.dynamicCall("DisconnectRealDate(QString)",self.screen_calculation_stock)
+
+            print("%s / %s : KOSDAQ Stock Code : is %s is updating ..... " % ((idx+1), len(code_list), code))
+
+            self.day_kiwoom_db(code = code)
+    
+    def day_kiwoom_db(self, code = None, date = None, sPrevNext = "0"):#주식일봉차트조회
+
+        QTest.qWait(3600) 
+
+        self.dynamicCall("SetInputValue(Qstring, Qstring)","종목코드", code)
+        self.dynamicCall("SetInputValue(Qstring, Qstring)","수정주가구분", "1")
+
+        if date != None:
+            self.dynamicCall("SetInputValue(Qstring, Qstring)","기준일자", date)
+
+        self.dynamicCall("CommRqData(QString, QString, int, QString)", "주식일봉차트조회", "opt10081", sPrevNext, self.screen_calculation_stock)    
+
+        self.calculator_event_loop.exec_()
 
     def trdata_slot(self, sScrNo, sRQName, sTrCode, sRecordName, sPreNext): #sPreNext: "0" "2" 값을 가진다
         '''
@@ -263,7 +296,7 @@ class Kiwoom(QAxWidget):
             
             self.detail_account_info_event_loop.exit()
 
-        if sRQName == "주식일봉차트조회":
+        elif sRQName == "주식일봉차트조회":
 
             code = self.dynamicCall("GetCommData(QString,QString,int,QString)",sTrCode, sRQName, 0, "종목코드")
             code = code.strip()
@@ -384,38 +417,6 @@ class Kiwoom(QAxWidget):
                 self.calculator_event_loop.exit()
 
 
-    def get_code_list_by_market(self, market_code):
-        '''종모 코드들 반환'''
-        code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
-        code_list = code_list.split(";")[:-1]
-
-        return code_list
-
-    def calculator_fnc(self):
-        code_list = self.get_code_list_by_market("10")
-        print("코스닥 갯수 %s" %len(code_list))
-
-        for idx, code in enumerate(code_list):
-
-            self.dynamicCall("DisconnectRealDate(QString)",self.screen_calculation_stock)
-
-            print("%s / %s : KOSDAQ Stock Code : is %s is updating ..... " % ((idx+1), len(code_list), code))
-
-            self.day_kiwoom_db(code = code)
-
-    def day_kiwoom_db(self, code = None, date = None, sPrevNext = "0"):
-
-        QTest.qWait(3600) 
-
-        self.dynamicCall("SetInputValue(Qstring, Qstring)","종목코드", code)
-        self.dynamicCall("SetInputValue(Qstring, Qstring)","수정주가구분", "1")
-
-        if date != None:
-            self.dynamicCall("SetInputValue(Qstring, Qstring)","기준일자", date)
-
-        self.dynamicCall("CommRqData(QString, QString, int, QString)", "주식일봉차트조회", "opt10081", sPrevNext, self.screen_calculation_stock)    
-
-        self.calculator_event_loop.exec_()
 
     def read_code(self):
 
@@ -677,7 +678,7 @@ class Kiwoom(QAxWidget):
                 chegaul_quantity = int(chegaul_quantity)
 
             current_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['주문체결']['현재가'])
-            current_price = abs(current_price)
+            current_price = abs(int(current_price))
 
             first_sell_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['주문체결']['(최우선)매도호가'])
             first_sell_price = abs(int(first_sell_price))
@@ -726,16 +727,16 @@ class Kiwoom(QAxWidget):
             buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['매입단가'])
             buy_price = abs(int(buy_price))
 
-            total_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['총매입가'])
-            total_buy_price = int(total_buy_price)
+            #total_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['총매입가(당일누적)'])
+            #total_buy_price = int(total_buy_price)
 
             meme_gubun = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['매도매수구분'])
             meme_gubun = self.realType.REALTYPE['매도수구분'][meme_gubun]
 
-            first_sell_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['(최우선)매도호가)'])
+            first_sell_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['(최우선)매도호가'])
             first_sell_price = abs(int(first_sell_price))
 
-            first_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['(최우선)매수호가)'])
+            first_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['(최우선)매수호가'])
             first_buy_price = abs(int(first_buy_price))
 
             if sCode not in self.jango_dict.keys():
@@ -747,7 +748,7 @@ class Kiwoom(QAxWidget):
                 self.jango_dict[sCode].update({"보유수량": stock_quan})
                 self.jango_dict[sCode].update({"주문가능수량": like_quan})
                 self.jango_dict[sCode].update({"매입단가": buy_price})
-                self.jango_dict[sCode].update({"총매입가": total_buy_price})
+                #self.jango_dict[sCode].update({"총매입가(당일누적)": total_buy_price})
                 self.jango_dict[sCode].update({"매도매수구분": meme_gubun})
                 self.jango_dict[sCode].update({"(최우선)매도호가": first_sell_price})
                 self.jango_dict[sCode].update({"(최우선)매수호가": first_buy_price})
